@@ -1,5 +1,4 @@
 # Discord Bot GitIgnore
-.env
 temp/
 lune.exe
 __pycache__/
