@@ -4,6 +4,7 @@ import os
 import subprocess
 import aiohttp
 import asyncio
+import shutil
 from dotenv import load_dotenv
 from pathlib import Path
 
@@ -12,19 +13,18 @@ env_path = Path(__file__).resolve().parent / '.env'
 load_dotenv(dotenv_path=env_path)
 
 TOKEN = os.getenv('DISCORD_TOKEN')
-UNVEILR_PATH = Path("../tmp_repo_analysis/hi.luau").resolve()
-TEMP_DIR = Path("./temp")
+# Core logic is now inside the 'core' folder in the bot directory
+UNVEILR_PATH = Path(__file__).resolve().parent / "core" / "hi.luau"
+TEMP_DIR = Path(__file__).resolve().parent / "temp"
 TEMP_DIR.mkdir(exist_ok=True)
 
 class MyClient(discord.Client):
     def __init__(self):
-        # We don't need message_content intent for slash commands with attachments
         intents = discord.Intents.default() 
         super().__init__(intents=intents)
         self.tree = app_commands.CommandTree(self)
 
     async def setup_hook(self):
-        # Syncing commands globally (can take up to an hour, for instant testing use a guild ID)
         await self.tree.sync()
         print(f"Synced slash commands.")
 
@@ -59,10 +59,19 @@ async def unveil(interaction: discord.Interaction, file: discord.Attachment):
                     await interaction.followup.send(f"파일 다운로드 실패 (Status: {resp.status})")
                     return
 
-        # Run Unveilr via Lune
-        lune_cmd = './lune.exe' if os.name == 'nt' else './lune'
-        if not os.path.exists(lune_cmd) and os.name != 'nt':
-            lune_cmd = 'lune' # Fallback to system path on Linux/Termux
+        # Improved Lune lookup
+        lune_cmd = shutil.which('lune')
+        if not lune_cmd:
+            # Check local directory or root
+            local_lune = Path(__file__).resolve().parent / ('lune.exe' if os.name == 'nt' else 'lune')
+            if local_lune.exists():
+                lune_cmd = str(local_lune)
+            else:
+                lune_cmd = 'lune'
+
+        if not UNVEILR_PATH.exists():
+            await interaction.followup.send("오류: 분석 도구 핵심 파일을 찾을 수 없습니다. (core/hi.luau)")
+            return
 
         process = await asyncio.create_subprocess_exec(
             lune_cmd, 'run', str(UNVEILR_PATH), str(input_path), f'--outfile={str(output_path)}',
