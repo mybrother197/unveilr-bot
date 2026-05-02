@@ -35,10 +35,9 @@ async def on_ready():
     print(f'Logged in as {client.user} (ID: {client.user.id})')
     print('------')
 
-@client.tree.command(name="unveil", description="오퓨스케이트된 루아 코드를 분석합니다 (파일 또는 텍스트 입력 가능).")
+@client.tree.command(name="unveil", description="오퓨스케이트된 루아 코드를 분석합니다 (.lua & .txt 결과 제공).")
 @app_commands.describe(file="분석할 .lua 또는 .txt 파일을 업로드하세요.", code="분석할 코드를 직접 입력하거나 붙여넣으세요.")
 async def unveil(interaction: discord.Interaction, file: Optional[discord.Attachment] = None, code: Optional[str] = None):
-    # Check if at least one input is provided
     if not file and not code:
         await interaction.response.send_message("파일을 업로드하거나 코드를 직접 입력해주세요!", ephemeral=True)
         return
@@ -50,7 +49,6 @@ async def unveil(interaction: discord.Interaction, file: Optional[discord.Attach
     output_path = TEMP_DIR / f"output_{request_id}.lua"
 
     try:
-        # Source 1: If file is provided
         if file:
             if not (file.filename.endswith('.lua') or file.filename.endswith('.txt')):
                 await interaction.followup.send("`.lua` 또는 `.txt` 파일만 지원합니다.")
@@ -64,13 +62,10 @@ async def unveil(interaction: discord.Interaction, file: Optional[discord.Attach
                     else:
                         await interaction.followup.send(f"파일 다운로드 실패 (Status: {resp.status})")
                         return
-        
-        # Source 2: If code string is provided (overwrites file source if both exist)
         elif code:
             with open(input_path, 'w', encoding='utf-8') as f:
                 f.write(code)
 
-        # Improved Lune lookup
         lune_cmd = shutil.which('lune')
         if not lune_cmd:
             local_lune = Path(__file__).resolve().parent / ('lune.exe' if os.name == 'nt' else 'lune')
@@ -92,18 +87,18 @@ async def unveil(interaction: discord.Interaction, file: Optional[discord.Attach
         stdout, stderr = await process.communicate()
 
         if process.returncode == 0 and output_path.exists():
-            # Send result as .txt file as requested
-            discord_file = discord.File(output_path, filename="unveiled_result.txt")
-            await interaction.followup.send("분석 완료! 결과물을 .txt 파일로 보내드립니다.", file=discord_file)
+            # Send both .lua and .txt files
+            file_lua = discord.File(output_path, filename="unveiled.lua")
+            file_txt = discord.File(output_path, filename="unveiled.txt")
+            await interaction.followup.send("분석 완료! 결과물을 .lua와 .txt 두 가지 형식으로 보내드립니다.", files=[file_lua, file_txt])
         else:
             out_msg = stdout.decode('utf-8', errors='ignore')
             err_msg = stderr.decode('utf-8', errors='ignore')
-            await interaction.followup.send(f"분석 도중 오류가 발생했습니다.\n코드: {process.returncode}\n출력: ```{out_msg[-500:]}```\n성적: ```{err_msg[-500:]}```")
+            await interaction.followup.send(f"분석 도중 오류가 발생했습니다.\n코드: {process.returncode}\n성적: ```{err_msg[-500:]}```")
 
     except Exception as e:
         await interaction.followup.send(f"예상치 못한 오류 발생: {str(e)}")
     finally:
-        # Cleanup
         if input_path.exists(): input_path.unlink()
         if output_path.exists(): output_path.unlink()
 
