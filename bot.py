@@ -50,27 +50,21 @@ async def run_lune(logic_path, input_code_path, output_code_path):
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
         )
-        stdout, stderr = await process.communicate()
-        return process.returncode, stdout, stderr
+        
+        try:
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=30.0)
+            return process.returncode, stdout, stderr
+        except asyncio.TimeoutError:
+            process.kill()
+            return -1, b"", b"Analysis timed out! The script took too long to analyze (infinite loop or too complex)."
+            
     except Exception as e:
         return -1, b"", str(e).encode()
 
-async def get_content(file: Optional[discord.Attachment], code: Optional[str], url: Optional[str], input_path: Path):
+async def get_content(file: Optional[discord.Attachment], code: Optional[str], input_path: Path):
     connector = aiohttp.TCPConnector(ssl=False)
     async with aiohttp.ClientSession(connector=connector) as session:
-        if url:
-            if "pastebin.com" in url and "/raw/" not in url:
-                url = url.replace("pastebin.com/", "pastebin.com/raw/")
-            if "github.com" in url and "raw" not in url:
-                url = url.replace("github.com/", "raw.githubusercontent.com/").replace("/blob/", "/")
-            
-            async with session.get(url, timeout=15) as resp:
-                if resp.status == 200:
-                    with open(input_path, 'wb') as f:
-                        f.write(await resp.read())
-                    return True
-                return f"URL 접속 실패 ({resp.status})"
-        elif file:
+        if file:
             async with session.get(file.url) as resp:
                 if resp.status == 200:
                     with open(input_path, 'wb') as f:
@@ -83,10 +77,10 @@ async def get_content(file: Optional[discord.Attachment], code: Optional[str], u
     return False
 
 @client.tree.command(name="unveil", description="오퓨스케이트된 루아 코드를 분석합니다.")
-@app_commands.describe(file="분석할 파일", code="분석할 코드 직접 입력", url="분석할 링크 (Pastebin/GitHub 등)")
-async def unveil(interaction: discord.Interaction, file: Optional[discord.Attachment] = None, code: Optional[str] = None, url: Optional[str] = None):
-    if not any([file, code, url]):
-        await interaction.response.send_message("파일, 코드, 또는 링크를 제공해주세요!", ephemeral=True)
+@app_commands.describe(file="분석할 파일", code="분석할 코드 직접 입력")
+async def unveil(interaction: discord.Interaction, file: Optional[discord.Attachment] = None, code: Optional[str] = None):
+    if not any([file, code]):
+        await interaction.response.send_message("파일 또는 코드를 제공해주세요!", ephemeral=True)
         return
 
     await interaction.response.defer(thinking=True)
@@ -95,7 +89,7 @@ async def unveil(interaction: discord.Interaction, file: Optional[discord.Attach
     output_path = TEMP_DIR / f"out_{request_id}.lua"
 
     try:
-        success = await get_content(file, code, url, input_path)
+        success = await get_content(file, code, input_path)
         if success is not True:
             await interaction.followup.send(f"입력값 처리 실패: {success}")
             return
