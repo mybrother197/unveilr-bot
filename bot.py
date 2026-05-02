@@ -7,7 +7,9 @@ import asyncio
 from dotenv import load_dotenv
 from pathlib import Path
 
-load_dotenv()
+# Load .env from the script's directory
+env_path = Path(__file__).resolve().parent / '.env'
+load_dotenv(dotenv_path=env_path)
 
 TOKEN = os.getenv('DISCORD_TOKEN')
 UNVEILR_PATH = Path("../tmp_repo_analysis/hi.luau").resolve()
