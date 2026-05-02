@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from pathlib import Path
 from typing import Optional
 
-# Load .env from the script's directory
+# Load .env
 env_path = Path(__file__).resolve().parent / '.env'
 load_dotenv(dotenv_path=env_path)
 
@@ -35,69 +35,77 @@ async def on_ready():
     print(f'Logged in as {client.user} (ID: {client.user.id})')
     print('------')
 
-@client.tree.command(name="unveil", description="오퓨스케이트된 루아 코드를 분석합니다 (.lua & .txt 결과 제공).")
-@app_commands.describe(file="분석할 .lua 또는 .txt 파일을 업로드하세요.", code="분석할 코드를 직접 입력하거나 붙여넣으세요.")
-async def unveil(interaction: discord.Interaction, file: Optional[discord.Attachment] = None, code: Optional[str] = None):
-    if not file and not code:
-        await interaction.response.send_message("파일을 업로드하거나 코드를 직접 입력해주세요!", ephemeral=True)
-        return
+async def run_lune(logic_path, input_code_path, output_code_path):
+    lune_cmd = shutil.which('lune')
+    if not lune_cmd:
+        local_lune = Path(__file__).resolve().parent / ('lune.exe' if os.name == 'nt' else 'lune')
+        if local_lune.exists():
+            lune_cmd = str(local_lune)
+        else:
+            lune_cmd = 'lune'
+    
+    process = await asyncio.create_subprocess_exec(
+        lune_cmd, 'run', str(logic_path), str(input_code_path), f"--outfile={str(output_code_path)}",
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE
+    )
+    stdout, stderr = await process.communicate()
+    return process.returncode, stdout, stderr
 
-    await interaction.response.defer(thinking=True)
-
-    request_id = interaction.id
-    input_path = TEMP_DIR / f"input_{request_id}.lua"
-    output_path = TEMP_DIR / f"output_{request_id}.lua"
-
-    try:
-        if file:
-            if not (file.filename.endswith('.lua') or file.filename.endswith('.txt')):
-                await interaction.followup.send("`.lua` 또는 `.txt` 파일만 지원합니다.")
-                return
+async def get_content(file: Optional[discord.Attachment], code: Optional[str], url: Optional[str], input_path: Path):
+    connector = aiohttp.TCPConnector(ssl=False)
+    async with aiohttp.ClientSession(connector=connector) as session:
+        if url:
+            if "pastebin.com" in url and "/raw/" not in url:
+                url = url.replace("pastebin.com/", "pastebin.com/raw/")
+            if "github.com" in url and "raw" not in url:
+                url = url.replace("github.com/", "raw.githubusercontent.com/").replace("/blob/", "/")
             
-            async with aiohttp.ClientSession() as session:
-                async with session.get(file.url) as resp:
-                    if resp.status == 200:
-                        with open(input_path, 'wb') as f:
-                            f.write(await resp.read())
-                    else:
-                        await interaction.followup.send(f"파일 다운로드 실패 (Status: {resp.status})")
-                        return
+            async with session.get(url, timeout=15) as resp:
+                if resp.status == 200:
+                    with open(input_path, 'wb') as f:
+                        f.write(await resp.read())
+                    return True
+                return f"URL 접속 실패 ({resp.status})"
+        elif file:
+            async with session.get(file.url) as resp:
+                if resp.status == 200:
+                    with open(input_path, 'wb') as f:
+                        f.write(await resp.read())
+                    return True
         elif code:
             with open(input_path, 'w', encoding='utf-8') as f:
                 f.write(code)
+            return True
+    return False
 
-        lune_cmd = shutil.which('lune')
-        if not lune_cmd:
-            local_lune = Path(__file__).resolve().parent / ('lune.exe' if os.name == 'nt' else 'lune')
-            if local_lune.exists():
-                lune_cmd = str(local_lune)
-            else:
-                lune_cmd = 'lune'
+@client.tree.command(name="unveil", description="오퓨스케이트된 루아 코드를 분석합니다.")
+@app_commands.describe(file="분석할 파일", code="분석할 코드 직접 입력", url="분석할 링크 (Pastebin/GitHub 등)")
+async def unveil(interaction: discord.Interaction, file: Optional[discord.Attachment] = None, code: Optional[str] = None, url: Optional[str] = None):
+    if not any([file, code, url]):
+        await interaction.response.send_message("파일, 코드, 또는 링크를 제공해주세요!", ephemeral=True)
+        return
 
-        if not UNVEILR_PATH.exists():
-            await interaction.followup.send("오류: 분석 도구 핵심 파일을 찾을 수 없습니다. (core/hi.luau)")
+    await interaction.response.defer(thinking=True)
+    request_id = interaction.id
+    input_path = TEMP_DIR / f"in_{request_id}.lua"
+    output_path = TEMP_DIR / f"out_{request_id}.lua"
+
+    try:
+        success = await get_content(file, code, url, input_path)
+        if success is not True:
+            await interaction.followup.send(f"입력값 처리 실패: {success}")
             return
 
-        process = await asyncio.create_subprocess_exec(
-            lune_cmd, 'run', str(UNVEILR_PATH), str(input_path), f'--outfile={str(output_path)}',
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
+        ret_code, stdout, stderr = await run_lune(UNVEILR_PATH, input_path, output_path)
 
-        stdout, stderr = await process.communicate()
-
-        if process.returncode == 0 and output_path.exists():
-            # Send both .lua and .txt files
+        if ret_code == 0 and output_path.exists():
             file_lua = discord.File(output_path, filename="unveiled.lua")
             file_txt = discord.File(output_path, filename="unveiled.txt")
-            await interaction.followup.send("분석 완료! 결과물을 .lua와 .txt 두 가지 형식으로 보내드립니다.", files=[file_lua, file_txt])
+            await interaction.followup.send("분석 완료!", files=[file_lua, file_txt])
         else:
-            out_msg = stdout.decode('utf-8', errors='ignore')
             err_msg = stderr.decode('utf-8', errors='ignore')
-            await interaction.followup.send(f"분석 도중 오류가 발생했습니다.\n코드: {process.returncode}\n성적: ```{err_msg[-500:]}```")
-
-    except Exception as e:
-        await interaction.followup.send(f"예상치 못한 오류 발생: {str(e)}")
+            await interaction.followup.send(f"분석 실패.\n에러: ```{err_msg[-500:]}```")
     finally:
         if input_path.exists(): input_path.unlink()
         if output_path.exists(): output_path.unlink()
