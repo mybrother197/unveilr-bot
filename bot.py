@@ -44,13 +44,16 @@ async def run_lune(logic_path, input_code_path, output_code_path):
         else:
             lune_cmd = 'lune'
     
-    process = await asyncio.create_subprocess_exec(
-        lune_cmd, 'run', str(logic_path), str(input_code_path), f"--outfile={str(output_code_path)}",
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE
-    )
-    stdout, stderr = await process.communicate()
-    return process.returncode, stdout, stderr
+    try:
+        process = await asyncio.create_subprocess_exec(
+            lune_cmd, 'run', str(logic_path), str(input_code_path), f"--outfile={str(output_code_path)}",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, stderr = await process.communicate()
+        return process.returncode, stdout, stderr
+    except Exception as e:
+        return -1, b"", str(e).encode()
 
 async def get_content(file: Optional[discord.Attachment], code: Optional[str], url: Optional[str], input_path: Path):
     connector = aiohttp.TCPConnector(ssl=False)
@@ -104,8 +107,16 @@ async def unveil(interaction: discord.Interaction, file: Optional[discord.Attach
             file_txt = discord.File(output_path, filename="unveiled.txt")
             await interaction.followup.send("분석 완료!", files=[file_lua, file_txt])
         else:
-            err_msg = stderr.decode('utf-8', errors='ignore')
-            await interaction.followup.send(f"분석 실패.\n에러: ```{err_msg[-500:]}```")
+            err_msg = stderr.decode('utf-8', errors='ignore').strip()
+            out_msg = stdout.decode('utf-8', errors='ignore').strip()
+            
+            combined_err = f"코드: {ret_code}\n"
+            if err_msg: combined_err += f"STDERR:\n```\n{err_msg[-400:]}\n```\n"
+            if out_msg: combined_err += f"STDOUT:\n```\n{out_msg[-400:]}\n```"
+            
+            if not err_msg and not out_msg: combined_err += "원인 불명의 중단 (Lune 에러 권한/충돌일 수 있음)"
+
+            await interaction.followup.send(f"분석 실패.\n{combined_err}")
     finally:
         if input_path.exists(): input_path.unlink()
         if output_path.exists(): output_path.unlink()
