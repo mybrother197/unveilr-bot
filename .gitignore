@@ -1,0 +1,12 @@
+# Discord Bot GitIgnore
+.env
+temp/
+lune.exe
+__pycache__/
+*.pyc
+
+# Local repo files (if combined)
+tmp_repo_analysis/
+out2.lua
+input.lua
+output.lua
