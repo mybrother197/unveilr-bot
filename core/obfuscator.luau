@@ -89,7 +89,7 @@ if _f then _f() else error(_e or "Failed to load") end
     decoder = safe_replace(decoder, "V_RES", v_res)
 
     -- Final Product (Clean assembly)
-    local final = "--[[ Prometheus X Phantom v12.5 ]]\n"
+    local final = "--[[ 하하난천0 x 난독화 v12.5 ]]\n"
     final ..= "local " .. v_vm_func .. " = function(...)\n"
     final ..= "    local _Env = getfenv()\n"
     final ..= "    pcall(function() if _Env.P == 'getfenv()' then while true do end end end)\n"
