@@ -1,7 +1,7 @@
 --!nocheck
 --[[
-    하하난천0 Security Module v2.2 "Scoped Titan"
-    Circumventing Luau Local Variable Limits (200 limit)
+    하하난천0 Security Module v2.3 "Scoped Titan"
+    Fixing math.random hex literal issue for server environments
 ]]
 
 local Security = {}
@@ -43,7 +43,8 @@ end
     
     -- Filler for 1200+ lines using tables to avoid local limit
     for i = 1, 400 do
-        res ..= string.format("do _Audit_Log[%d] = math.sin(%d); end -- SEC_%x\n", i, math.random(1,100), math.random(0,xFFFF))
+        -- Use decimal 65535 instead of 0xFFFF for cross-env compatibility
+        res ..= string.format("do _Audit_Log[%d] = math.sin(%d); end -- SEC_%x\n", i, math.random(1,100), math.random(0, 65535))
     end
 
     return res
