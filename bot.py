@@ -115,6 +115,54 @@ async def unveil(interaction: discord.Interaction, file: Optional[discord.Attach
         if input_path.exists(): input_path.unlink()
         if output_path.exists(): output_path.unlink()
 
+@client.tree.command(name="obfuscate", description="루아 코드를 난독화합니다.")
+@app_commands.describe(file="난독화할 파일", code="난독화할 코드 직접 입력")
+async def obfuscate(interaction: discord.Interaction, file: Optional[discord.Attachment] = None, code: Optional[str] = None):
+    if not any([file, code]):
+        await interaction.response.send_message("파일 또는 코드를 제공해주세요!", ephemeral=True)
+        return
+
+    await interaction.response.defer(thinking=True)
+    request_id = interaction.id
+    input_path = TEMP_DIR / f"obf_in_{request_id}.lua"
+    output_path = TEMP_DIR / f"obf_out_{request_id}.lua"
+    obf_logic_path = Path(__file__).resolve().parent / "core" / "obfuscator.luau"
+
+    try:
+        success = await get_content(file, code, input_path)
+        if success is not True:
+            await interaction.followup.send(f"입력값 처리 실패: {success}")
+            return
+
+        # Reuse run_lune but with different paths
+        lune_cmd = shutil.which('lune')
+        if not lune_cmd:
+            local_lune = Path(__file__).resolve().parent / ('lune.exe' if os.name == 'nt' else 'lune')
+            lune_cmd = str(local_lune) if local_lune.exists() else 'lune'
+
+        process = await asyncio.create_subprocess_exec(
+            lune_cmd, 'run', str(obf_logic_path), str(input_path), str(output_path),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        
+        try:
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=30.0)
+            ret_code = process.returncode
+        except asyncio.TimeoutError:
+            process.kill()
+            ret_code, stdout, stderr = -1, b"", b"Obfuscation timed out!"
+
+        if ret_code == 0 and output_path.exists():
+            file_lua = discord.File(output_path, filename="obfuscated.lua")
+            await interaction.followup.send("난독화 완료!", file=file_lua)
+        else:
+            err_msg = stderr.decode('utf-8', errors='ignore').strip()
+            await interaction.followup.send(f"난독화 실패.\n코드: {ret_code}\n에러: {err_msg}")
+    finally:
+        if input_path.exists(): input_path.unlink()
+        if output_path.exists(): output_path.unlink()
+
 if __name__ == "__main__":
     if not TOKEN:
         print("에러: .env 파일에 DISCORD_TOKEN을 설정해주세요.")
