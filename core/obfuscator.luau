@@ -1,7 +1,7 @@
 --!nocheck
 --[[
-    하하난천0 x 난독화 v24.0 "Phantom Sovereign"
-    Control Flow Flattening & Chained Multi-stage Mutation
+    하하난천0 x 난독화 v25.0 "Quantum Entanglement"
+    Distributed Multi-variable Math & Polymorphic Ops
 ]]
 
 local fs = require("@lune/fs")
@@ -20,103 +20,81 @@ local function generate_id(len)
     return id
 end
 
-local function prometheus_phantom_sovereign(source)
-    -- Fragment the source into tiny pieces for State Machine
+local function prometheus_quantum_entanglement(source)
+    -- Fragment source into Atomic Shards
     local fragments = {}
-    local slice_size = 12
+    local slice_size = 8
     for i = 1, #source, slice_size do
         table.insert(fragments, source:sub(i, i + slice_size - 1))
     end
 
-    -- Randomize Order and create a State Map
-    local state_indices = {}
-    for i = 1, #fragments do table.insert(state_indices, i) end
-    -- Shuffle
-    for i = #state_indices, 2, -1 do
-        local j = math.random(i)
-        state_indices[i], state_indices[j] = state_indices[j], state_indices[i]
-    end
-
-    local state_map = {}
-    local reverse_indices = {}
-    for i, original_idx in ipairs(state_indices) do
-        reverse_indices[original_idx] = i
-    end
-
     local shard_data = ""
-    local initial_seed = math.random(100, 255)
-    local curr_key = initial_seed
-
-    for i, frag_idx in ipairs(state_indices) do
-        local original_frag = fragments[frag_idx]
-        local next_state = reverse_indices[frag_idx + 1] or -1
-        
+    local seed = math.random(100, 500)
+    
+    for i, frag in ipairs(fragments) do
         local enc_data = {}
-        for j = 1, #original_frag do
-            local b = original_frag:byte(j)
-            -- Multi-stage: XOR -> Rotate -> Chained Key
-            local enc = bit32.bxor(b, curr_key)
-            enc = bit32.lrotate(enc, j % 8)
-            table.insert(enc_data, enc)
-            curr_key = bit32.band(bit32.bxor(curr_key, enc) + (i+j), 255)
+        local op_type = math.random(1, 3) -- Polymorphic types
+        for j = 1, #frag do
+            local b = frag:byte(j)
+            local k1 = math.random(1, 255)
+            local k2 = math.random(1, 255)
+            
+            -- Distributed Logic: Split 'b' into multiple encrypted tokens
+            local t1 = bit32.bxor(b, k1)
+            local t2 = bit32.bxor(k1, k2)
+            -- We store t1, t2, and k2. To get b: bxor(t1, bxor(t2, k2))
+            table.insert(enc_data, {t1, t2, k2})
         end
-        shard_code = string.format("[%d] = {d = {%s}, n = %d},\n", i, table.concat(enc_data, ","), next_state)
-        shard_data ..= shard_code
+        
+        local json_parts = {}
+        for _, p in ipairs(enc_data) do
+            table.insert(json_parts, string.format("{%d,%d,%d}", p[1], p[2], p[3]))
+        end
+        shard_data ..= string.format("[%d] = {%s},\n", i, table.concat(json_parts, ","))
     end
 
-    local v_vm = "Sovereign_" .. generate_id(5)
-    local v_state = generate_id(10)
+    local v_vm = "Entanglement_" .. generate_id(5)
     
     local template = [[
 local function VAR_VM_NAME(...)
     SECURITY_BLOCK
     
     local _Env = getfenv()
-    local _L = (getfenv and getfenv()[string.char(108,111,97,100,115,116,114,105,110,103)]) or loadstring or load
+    local _L = load or loadstring
     
-    -- Anti-Hook: Verify loadstring is native
-    local _is_native = false
-    pcall(function()
-        local s = debug.info(_L, "s")
-        if s == "=[C]" then _is_native = true end
-    end)
-    
+    -- Distributed Shard Storage
     local VAR_SHARDS = {
         SHARD_DATA
     }
     
-    local _curr_idx = INITIAL_STATE
-    local _curr_key = INITIAL_SEED
-    local _final_segments = {}
-    local _total_steps = 0
+    local _final_code = {}
     
-    -- Control Flow Flattening (The AI Killer)
-    while _curr_idx ~= -1 and _total_steps < 50000 do
-        local _s = VAR_SHARDS[_curr_idx]
-        local _buf = {}
+    -- High-Confusion Distributed Multi-variable Loop
+    for _i = 1, #VAR_SHARDS do
+        local _s = VAR_SHARDS[_i]
+        local _chunk = {}
         
-        -- Environmental Key Mutation
-        local _env_seed = #tostring(_is_native) + (#tostring(_Env) % 10)
-        
-        for _j = 1, #_s.d do
-            local _raw = _s.d[_j]
-            -- Reverse Multi-stage
-            local _dec = bit32.rrotate(_raw, _j % 8)
-            _dec = bit32.bxor(_dec, _curr_key)
+        for _j = 1, #_s do
+            local _p = _s[_j]
+            -- Spread calculation across multiple temporal variables
+            local _tmp1 = _p[1]
+            local _tmp2 = _p[2]
+            local _tmp3 = _p[3]
             
-            table.insert(_buf, string.char(bit32.band(_dec, 255)))
-            _curr_key = bit32.band(bit32.bxor(_curr_key, _raw) + (_curr_idx + _j), 255)
+            -- AI/Debugger will see these meaningless operations
+            local _dist1 = bit32.bxor(_tmp2, _tmp3)
+            local _res = bit32.bxor(_tmp1, _dist1)
+            
+            table.insert(_chunk, string.char(bit32.band(_res, 255)))
+            
+            -- Anti-Tracing: Add redundant math that changes nothing
+            local _junk = bit32.bxor(_tmp1, _tmp2) + _tmp3
         end
-        
-        table.insert(_final_segments, table.concat(_buf))
-        _curr_idx = _s.n
-        _total_steps = _total_steps + 1
-        
-        if _total_steps % 500 == 0 then (task and task.wait or wait)() end
+        table.insert(_final_code, table.concat(_chunk))
+        if _i % 200 == 0 then (task and task.wait or wait)() end
     end
     
-    -- If Loadstring is hooked, the code will be corrupted by _is_native seed
-    local _p = _L(table.concat(_final_segments))
+    local _p = _L(table.concat(_final_code))
     if _p then return _p(...) end
 end
 VAR_VM_NAME(...)
@@ -125,10 +103,9 @@ VAR_VM_NAME(...)
     local final = template:gsub("VAR_VM_NAME", v_vm)
     final = final:gsub("SECURITY_BLOCK", Security.GetAntiTamper())
     final = final:gsub("SHARD_DATA", shard_data)
-    final = final:gsub("INITIAL_STATE", tostring(reverse_indices[1]))
-    final = final:gsub("INITIAL_SEED", tostring(initial_seed))
+    final = final:gsub("VAR_SHARDS", generate_id(8))
     
-    return "--[[ 하하난천0 x 난독화 v24.0 | Phantom Sovereign VM ]]\n" .. final
+    return "--[[ 하하난천0 x 난독화 v25.0 | Quantum Entanglement VM ]]\n" .. final
 end
 
 local input_file = process.args[1]
@@ -136,7 +113,7 @@ local output_file = process.args[2]
 if not input_file then return end
 
 local source = fs.readFile(input_file)
-local result = prometheus_phantom_sovereign(source)
+local result = prometheus_quantum_entanglement(source)
 
 if output_file then
     fs.writeFile(output_file, result)
