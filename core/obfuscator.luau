@@ -1,7 +1,7 @@
 --!nocheck
 --[[
-    하하난천0 x 난독화 v19.1 "Titan VM Hypervisor"
-    Stabilized Template Engine & Optimized Dispatcher
+    하하난천0 x 난독화 v19.2 "Transparent Titan"
+    Vararg Tunneling & Robust Syntax Assembly
 ]]
 
 local fs = require("@lune/fs")
@@ -29,16 +29,15 @@ local function prometheus_titan_vm(source)
     local v_vm_name = "TitanVM_" .. generate_id(5)
     local v_state = generate_id(10)
     local v_pc_table = generate_id(10)
-    local v_pc_val = generate_id(5)
     local v_sandbox = generate_id(10)
     local v_dispatch = generate_id(10)
 
     local op_xor = math.random(50, 250)
     local op_mod = math.random(10, 100)
 
-    -- Build with direct variable injection to prevent format errors
     local template = [[
 local function VAR_VM_NAME(...)
+    local _ARGS = {...}
     SECURITY_BLOCK
     
     local VAR_STATE = {BYTECODE_DATA}
@@ -67,7 +66,7 @@ local function VAR_VM_NAME(...)
         
         if _success and _runtime then
             setfenv(_runtime, VAR_SANDBOX)
-            _runtime(...)
+            _runtime(unpack(_ARGS))
         end
     end
 
@@ -87,7 +86,7 @@ VAR_VM_NAME(...)
     final = final:gsub("OP_MOD", tostring(op_mod))
     final = final:gsub("OP_XOR", tostring(op_xor))
     
-    return "--[[ 하하난천0 x 난독화 v19.1 | Titan VM Hypervisor ]]\n" .. final
+    return "--[[ 하하난천0 x 난독화 v19.2 | Transparent Titan VM ]]\n" .. final
 end
 
 local input_file = process.args[1]
