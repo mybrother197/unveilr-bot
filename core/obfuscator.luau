@@ -79,7 +79,7 @@ end
     -- Final Product
     local final = string.format([[
 --[[ Prometheus X v11.0 | UNVEILR-KILLER ]]
-%s
+%s;
 (function()
     %s
 end)()
