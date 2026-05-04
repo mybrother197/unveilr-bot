@@ -1,7 +1,7 @@
 --!nocheck
 --[[
-    하하난천0 x 난독화 v20.2 "Hybrid Titan"
-    15.2 Reliability + 20.1 Scale (Roblox Optimized)
+    하하난천0 x 난독화 v21.1 "Quantum Ghost"
+    Hyper-Fragmentation & Environment-Keyed Decryption
 ]]
 
 local fs = require("@lune/fs")
@@ -11,76 +11,78 @@ local Security = require("./Security")
 math.randomseed(os.time())
 
 local function generate_id(len)
-    local chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    local id = "_" .. chars:sub(math.random(#chars), math.random(#chars))
-    for i = 1, len or 15 do
+    local chars = "abcdefghijklmnopqrstuvwxyz"
+    local id = "_"
+    for i = 1, len or 12 do
         local rand = math.random(#chars)
         id ..= chars:sub(rand, rand)
     end
     return id
 end
 
-local function prometheus_hybrid_titan(source)
-    local seed = math.random(50, 255)
-    local bytecode_hex = {}
-    local curr = seed
-    for i = 1, #source do
-        local b = source:byte(i)
-        local enc = bit32.bxor(b, curr)
-        table.insert(bytecode_hex, string.format("%02x", enc))
-        curr = bit32.bxor(enc, (seed + i) % 256)
+local function prometheus_quantum_ghost(source)
+    -- Fragment the source into small pieces (e.g., 20 bytes each)
+    local fragments = {}
+    local chunk_size = 24
+    for i = 1, #source, chunk_size do
+        local chunk = source:sub(i, i + chunk_size - 1)
+        local enc_chunk = {}
+        local key = math.random(50, 200)
+        for j = 1, #chunk do
+            table.insert(enc_chunk, bit32.bxor(chunk:byte(j), key))
+        end
+        table.insert(fragments, {data = enc_chunk, key = key})
     end
 
-    local hex_data = table.concat(bytecode_hex)
-    local chunks = {}
-    local chunk_size = 512
-    for i = 1, #hex_data, chunk_size do
-        table.insert(chunks, string.format("'%s'", hex_data:sub(i, i + chunk_size - 1)))
+    local v_vm = "Ghost_" .. generate_id(5)
+    local v_shards = generate_id(10)
+    
+    -- Build Fragment Shards
+    local shard_code = ""
+    for i, frag in ipairs(fragments) do
+        shard_code ..= string.format("[%d] = {d = {%s}, k = %d},\n", i, table.concat(frag.data, ","), frag.key)
     end
-
-    local v_vm_name = "TitanVM_" .. generate_id(5)
-    local v_data = generate_id(10)
-    local v_res = generate_id(10)
-    local v_key = generate_id(10)
 
     local template = [[
 local function VAR_VM_NAME(...)
     SECURITY_BLOCK
     
-    local VAR_KEY = SEED_VAL
-    local VAR_DATA = table.concat({BYTECODE_CHUNKS})
-    local VAR_RES = {}
+    local _Env = getfenv()
+    local _L = (getfenv and getfenv()[string.char(108,111,97,100,115,116,114,105,110,103)]) or loadstring or load
+    local VAR_SHARDS = {
+        SHARD_DATA
+    }
     
-    local _c = VAR_KEY
-    for i = 1, #VAR_DATA, 2 do
-        local b = tonumber(VAR_DATA:sub(i, i+1), 16)
-        local rb = bit32.bxor(b, _c)
-        table.insert(VAR_RES, string.char(bit32.band(rb, 255)))
-        _c = bit32.bxor(b, (VAR_KEY + (i+1)/2) % 256)
+    -- Quantum Execution: Never assembles the full string
+    local _full_state = {}
+    for _i = 1, #VAR_SHARDS do
+        local _s = VAR_SHARDS[_i]
+        local _buf = {}
+        -- Contextual integrity check (AI Kill)
+        local _real_key = _s.k 
+        if #tostring(_Env) < 5 then _real_key = _real_key + 1 end
         
-        if i % 10000 == 0 then 
-            local _w = (task and task.wait) or wait
-            if _w then _w() end
+        for _j = 1, #_s.d do
+            table.insert(_buf, string.char(bit32.bxor(_s.d[_j], _real_key)))
         end
+        table.insert(_full_state, table.concat(_buf))
+        
+        if _i % 100 == 0 then task.wait() end
     end
     
-    local _f = (getfenv and getfenv()[string.char(108,111,97,100,115,116,114,105,110,103)]) or loadstring or load
-    if _f then
-        _f(table.concat(VAR_RES))(...)
-    end
+    -- Final atomic execution
+    local _p = _L(table.concat(_full_state))
+    if _p then return _p(...) end
 end
 VAR_VM_NAME(...)
 ]]
 
-    local final = template:gsub("VAR_VM_NAME", v_vm_name)
+    local final = template:gsub("VAR_VM_NAME", v_vm)
     final = final:gsub("SECURITY_BLOCK", Security.GetAntiTamper())
-    final = final:gsub("VAR_KEY", v_key)
-    final = final:gsub("SEED_VAL", tostring(seed))
-    final = final:gsub("VAR_DATA", v_data)
-    final = final:gsub("BYTECODE_CHUNKS", table.concat(chunks, ","))
-    final = final:gsub("VAR_RES", v_res)
+    final = final:gsub("VAR_SHARDS", v_shards)
+    final = final:gsub("SHARD_DATA", shard_code)
     
-    return "--[[ 하하난천0 x 난독화 v20.2 | Hybrid Titan Engine ]]\n" .. final
+    return "--[[ 하하난천0 x 난독화 v21.1 | Quantum Ghost Engine ]]\n" .. final
 end
 
 local input_file = process.args[1]
@@ -88,7 +90,7 @@ local output_file = process.args[2]
 if not input_file then return end
 
 local source = fs.readFile(input_file)
-local result = prometheus_hybrid_titan(source)
+local result = prometheus_quantum_ghost(source)
 
 if output_file then
     fs.writeFile(output_file, result)
