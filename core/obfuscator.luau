@@ -1,7 +1,7 @@
 --!nocheck
 --[[
-    Prometheus X v12.4 "Phantom VM"
-    Eliminated IIFE Syntax Ambiguity for Roblox
+    Prometheus X v12.5 "Phantom VM"
+    Clean assembly without redundant semicolons.
 ]]
 
 local fs = require("@lune/fs")
@@ -22,12 +22,12 @@ end
 local function prometheus_phantom_vm(source)
     -- 1. Rock-Solid Environment Verification
     local key_derivation = [[
-local _0x_Key = 0;
+local _0x_Key = 0
 pcall(function()
-    _0x_Key = _0x_Key + #typeof(game);
-    _0x_Key = _0x_Key + #game.ClassName;
-    _0x_Key = _0x_Key + (type(spawn) == "function" and 10 or 5);
-end);
+    _0x_Key = _0x_Key + #typeof(game)
+    _0x_Key = _0x_Key + #game.ClassName
+    _0x_Key = _0x_Key + (type(spawn) == "function" and 10 or 5)
+end)
 ]]
 
     -- 2. Scramble logic
@@ -58,23 +58,23 @@ end);
     local v_vm_func = generate_id(12, "VM_")
     
     local decoder_template = [[
-local V_CHUNKS = CHUNK_DATA;
-KEY_DERIVATION;
-local V_FKEY = _0x_Key;
-local V_RES = {};
+local V_CHUNKS = CHUNK_DATA
+KEY_DERIVATION
+local V_FKEY = _0x_Key
+local V_RES = {}
 for _, ch in ipairs(V_CHUNKS) do
     for i = 1, #ch, 2 do
-        local b = tonumber(ch:sub(i, i+1), 16);
+        local b = tonumber(ch:sub(i, i+1), 16)
         if b then
-            local rb = bit32.bxor(b, V_FKEY);
-            table.insert(V_RES, string.char(rb));
+            local rb = bit32.bxor(b, V_FKEY)
+            table.insert(V_RES, string.char(rb))
         end
     end
-end;
-local _src = table.concat(V_RES);
-local _run = (getfenv and getfenv()[string.char(108,111,97,100,115,116,114,105,110,103)]) or loadstring or load;
-local _f, _e = _run(_src);
-if _f then _f() else error(_e or "Failed to load") end;
+end
+local _src = table.concat(V_RES)
+local _run = (getfenv and getfenv()[string.char(108,111,97,100,115,116,114,105,110,103)]) or loadstring or load
+local _f, _e = _run(_src)
+if _f then _f() else error(_e or "Failed to load") end
 ]]
     
     local function safe_replace(str, p, r)
@@ -88,13 +88,13 @@ if _f then _f() else error(_e or "Failed to load") end;
     decoder = safe_replace(decoder, "V_FKEY", v_fkey)
     decoder = safe_replace(decoder, "V_RES", v_res)
 
-    -- Final Product (Using Named Function instead of IIFE)
-    local final = "--[[ Prometheus X Phantom v12.4 ]]\n"
+    -- Final Product (Clean assembly)
+    local final = "--[[ Prometheus X Phantom v12.5 ]]\n"
     final ..= "local " .. v_vm_func .. " = function(...)\n"
-    final ..= "    local _Env = getfenv();\n"
-    final ..= "    pcall(function() if _Env.P == 'getfenv()' then while true do end end end);\n"
+    final ..= "    local _Env = getfenv()\n"
+    final ..= "    pcall(function() if _Env.P == 'getfenv()' then while true do end end end)\n"
     final ..= "    " .. (decoder:gsub("\n", " ")) .. "\n"
-    final ..= "end;\n"
+    final ..= "end\n"
     final ..= "return " .. v_vm_func .. "(...)\n"
 
     return final
