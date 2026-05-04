@@ -1,7 +1,7 @@
 --!nocheck
 --[[
-    하하난천0 x 난독화 v19.0 "Titan VM Hypervisor"
-    Full Instruction Virtualization & Isolated Sandbox
+    하하난천0 x 난독화 v19.1 "Titan VM Hypervisor"
+    Stabilized Template Engine & Optimized Dispatcher
 ]]
 
 local fs = require("@lune/fs")
@@ -21,7 +21,6 @@ local function generate_id(len)
 end
 
 local function prometheus_titan_vm(source)
-    -- Virtualized Instructions Table
     local instructions = {}
     for i = 1, #source do
         table.insert(instructions, source:byte(i))
@@ -29,61 +28,66 @@ local function prometheus_titan_vm(source)
 
     local v_vm_name = "TitanVM_" .. generate_id(5)
     local v_state = generate_id(10)
-    local v_dispatch = generate_id(10)
-    local v_pc = generate_id(5)
+    local v_pc_table = generate_id(10)
+    local v_pc_val = generate_id(5)
     local v_sandbox = generate_id(10)
+    local v_dispatch = generate_id(10)
 
-    -- Randomize Opcode Mapping
     local op_xor = math.random(50, 250)
     local op_mod = math.random(10, 100)
 
-    local final = "--[[ 하하난천0 x 난독화 v19.0 | Titan VM Hypervisor ]]\n"
-    final ..= "local function " .. v_vm_name .. "(...)\n"
-    final ..= Security.GetAntiTamper() .. "\n"
+    -- Build with direct variable injection to prevent format errors
+    local template = [[
+local function VAR_VM_NAME(...)
+    SECURITY_BLOCK
     
-    -- VM Internal State
-    final ..= string.format([[
-    local %s = {%s}
-    local %s = {PC = 1, Stack = {}, Running = true, Buffer = {}}
-    local %s = getfenv()
+    local VAR_STATE = {BYTECODE_DATA}
+    local VAR_PC_TABLE = {PC = 1, Running = true, Buffer = {}}
+    local VAR_PARENT_ENV = getfenv()
     
-    -- Isolated Sandbox Proxy
-    local %s = setmetatable({}, {
-        __index = function(_, k) return %s[k] end,
-        __newindex = function(_, k, v) %s[k] = v end
+    local VAR_SANDBOX = setmetatable({}, {
+        __index = function(_, k) return VAR_PARENT_ENV[k] end,
+        __newindex = function(_, k, v) VAR_PARENT_ENV[k] = v end
     })
 
-    -- The Hypervisor Execution Loop
-    local function %s()
-        while %s.Running and %s.PC <= #%s do
-            local _raw = %s[%s.PC]
-            -- Logic Decryption (Instruction level)
-            local _inst = bit32.bxor(_raw, (%s.PC * %d + %d) %% 256)
-            table.insert(%s.Buffer, string.char(bit32.band(_inst, 255)))
+    local function VAR_DISPATCH()
+        while VAR_PC_TABLE.Running and VAR_PC_TABLE.PC <= #VAR_STATE do
+            local _raw = VAR_STATE[VAR_PC_TABLE.PC]
+            local _inst = bit32.bxor(_raw, (VAR_PC_TABLE.PC * OP_MOD + OP_XOR) % 256)
+            table.insert(VAR_PC_TABLE.Buffer, string.char(bit32.band(_inst, 255)))
             
-            %s.PC = %s.PC + 1
-            if %s.PC %% 2000 == 0 then task.wait() end
+            VAR_PC_TABLE.PC = VAR_PC_TABLE.PC + 1
+            if VAR_PC_TABLE.PC % 3000 == 0 then task.wait() end
         end
         
-        -- Virtual Context Execution
-        local _kernel = (%s[string.char(108,111,97,100,115,116,114,105,110,103)]) or loadstring or load
+        local _kernel = (VAR_SANDBOX[string.char(108,111,97,100,115,116,114,105,110,103)]) or loadstring or load
         local _success, _runtime = pcall(function()
-            return _kernel(table.concat(%s.Buffer))
+            return _kernel(table.concat(VAR_PC_TABLE.Buffer))
         end)
         
         if _success and _runtime then
-            setfenv(_runtime, %s)
+            setfenv(_runtime, VAR_SANDBOX)
             _runtime(...)
         end
     end
 
-    pcall(%s)
+    pcall(VAR_DISPATCH)
 end
-]], v_state, table.concat(instructions, ","), v_pc, v_sandbox, v_sandbox, v_sandbox, v_sandbox, v_dispatch, v_pc, v_pc, v_state, v_pc, v_pc, op_mod, op_xor, v_pc, v_pc, v_pc, v_pc, v_sandbox, v_pc, v_sandbox, v_dispatch)
+VAR_VM_NAME(...)
+]]
 
-    final ..= v_vm_name .. "(...)\n"
+    local final = template:gsub("VAR_VM_NAME", v_vm_name)
+    final = final:gsub("SECURITY_BLOCK", Security.GetAntiTamper())
+    final = final:gsub("VAR_STATE", v_state)
+    final = final:gsub("BYTECODE_DATA", table.concat(instructions, ","))
+    final = final:gsub("VAR_PC_TABLE", v_pc_table)
+    final = final:gsub("VAR_PARENT_ENV", generate_id(8))
+    final = final:gsub("VAR_SANDBOX", v_sandbox)
+    final = final:gsub("VAR_DISPATCH", v_dispatch)
+    final = final:gsub("OP_MOD", tostring(op_mod))
+    final = final:gsub("OP_XOR", tostring(op_xor))
     
-    return final
+    return "--[[ 하하난천0 x 난독화 v19.1 | Titan VM Hypervisor ]]\n" .. final
 end
 
 local input_file = process.args[1]
