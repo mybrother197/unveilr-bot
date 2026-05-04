@@ -1,7 +1,7 @@
 --!nocheck
 --[[
-    Prometheus X v11.0 "Infinite Trap"
-    Brutal Anti-Analysis with System-Freezing Loops
+    Prometheus X v11.1 "Infinite Trap"
+    Final fix for assembly syntax errors.
 ]]
 
 local fs = require("@lune/fs")
@@ -27,14 +27,12 @@ local _0x_T = tostring
 local _0x_Trap = function()
     local _0x_Mem = {}
     local function _0x_Infinite()
-        -- Memory Growth + Stack Overflow + While True
         for i = 1, 100000 do table.insert(_0x_Mem, {i}) end 
         return _0x_Infinite()
     end
     while true do _0x_Infinite() end
 end
 
--- Detection: If getfenv is a proxy or tostring is hooked
 local _0x_is_fake = false
 pcall(function()
     if _0x_Env.P == "getfenv()" then _0x_is_fake = true end
@@ -56,34 +54,43 @@ end
     end
 
     local data, key = encrypt(source)
-    local hex = ""
-    for _, b in ipairs(data) do hex ..= string.format("%02x", b) end
+    local hex_data = ""
+    for _, b in ipairs(data) do hex_data ..= string.format("%02x", b) end
 
     -- 3. Obfuscated Decoder
     local v_ld = generate_id(10)
     local v_bt = generate_id(10)
     local v_xk = generate_id(10)
     
-    local decoder = string.format([[
-local %s = getfenv()[string.char(108,111,97,100,115,116,114,105,110,103)]
-local %s = "%s"
-local %s = %d
+    local decoder_template = [[
+local V_LD = getfenv()[string.char(108,111,97,100,115,116,114,105,110,103)]
+local V_BT = "HEX_DATA"
+local V_XK = KEY_VAL
 local _out = {}
-for i = 1, #%s, 2 do
-    local b = tonumber(%s:sub(i, i+1), 16)
-    table.insert(_out, string.char(bit32.bxor(b, %s)))
+for i = 1, #V_BT, 2 do
+    local b = tonumber(V_BT:sub(i, i+1), 16)
+    table.insert(_out, string.char(bit32.bxor(b, V_XK)))
 end
-%s(table.concat(_out))()
-]], v_ld, v_bt, hex, v_xk, key, v_bt, v_bt, v_xk, v_ld)
+V_LD(table.concat(_out))()
+]]
+    
+    local function safe_replace(str, p, r)
+        return (str:gsub(p, function() return tostring(r) end))
+    end
 
-    -- Final Product
-    local final = string.format([[
---[[ Prometheus X v11.0 | UNVEILR-KILLER ]]
-%s;
-(function()
-    %s
-end)()
-]], trap, decoder:gsub("\n", " "))
+    local decoder = decoder_template
+    decoder = safe_replace(decoder, "V_LD", v_ld)
+    decoder = safe_replace(decoder, "V_BT", v_bt)
+    decoder = safe_replace(decoder, "HEX_DATA", hex_data)
+    decoder = safe_replace(decoder, "V_XK", v_xk)
+    decoder = safe_replace(decoder, "KEY_VAL", key)
+
+    -- Final Product (Using simple concat for safety)
+    local final = "--[[ Prometheus X v11.1 | UNVEILR-KILLER ]]\n"
+    final ..= trap .. ";\n"
+    final ..= "(function()\n"
+    final ..= (decoder:gsub("\n", " ")) .. "\n"
+    final ..= "end)()"
 
     return final
 end
