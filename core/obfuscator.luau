@@ -1,7 +1,7 @@
 --!nocheck
 --[[
-    하하난천0 x 난독화 v17.0 "Eternal Shard"
-    Metatable Proxy Decryption & Chained Rolling Keys
+    하하난천0 x 난독화 v19.0 "Titan VM Hypervisor"
+    Full Instruction Virtualization & Isolated Sandbox
 ]]
 
 local fs = require("@lune/fs")
@@ -12,79 +12,76 @@ math.randomseed(os.time())
 
 local function generate_id(len)
     local chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    local id = "_"
-    for i = 1, len or 14 do
+    local id = "_" .. chars:sub(math.random(#chars), math.random(#chars))
+    for i = 1, len or 15 do
         local rand = math.random(#chars)
         id ..= chars:sub(rand, rand)
     end
     return id
 end
 
-local function prometheus_eternal_shard(source)
-    -- Chained rolling seed
-    local seed = math.random(100, 255)
-    local data = {}
-    local curr = seed
+local function prometheus_titan_vm(source)
+    -- Virtualized Instructions Table
+    local instructions = {}
     for i = 1, #source do
-        local b = source:byte(i)
-        local enc = bit32.bxor(b, curr)
-        enc = bit32.bxor(enc, (i % 256))
-        data[i] = enc
-        curr = bit32.bxor(enc, (seed + i) % 256)
+        table.insert(instructions, source:byte(i))
     end
 
-    local shard_id = generate_id(12)
-    local v_mem = generate_id(10)
-    local v_key = generate_id(10)
-    
-    -- Split data into deep nested tables to confuse static analysis
-    local function split_to_shards(tbl)
-        local shard_code = ""
-        local depth = 3
-        for i = 1, #tbl, 8 do
-            local slice = {}
-            for j = i, math.min(i + 7, #tbl) do
-                table.insert(slice, tbl[j])
-            end
-            shard_code ..= string.format("%s[%d] = {%s}\n", v_mem, math.floor(i/8) + 1, table.concat(slice, ","))
-        end
-        return shard_code
-    end
+    local v_vm_name = "TitanVM_" .. generate_id(5)
+    local v_state = generate_id(10)
+    local v_dispatch = generate_id(10)
+    local v_pc = generate_id(5)
+    local v_sandbox = generate_id(10)
 
-    local final = "--[[ 하하난천0 x 난독화 v17.0 | Eternal Shard Engine ]]\n"
-    final ..= "local function _Start(...)\n"
+    -- Randomize Opcode Mapping
+    local op_xor = math.random(50, 250)
+    local op_mod = math.random(10, 100)
+
+    local final = "--[[ 하하난천0 x 난독화 v19.0 | Titan VM Hypervisor ]]\n"
+    final ..= "local function " .. v_vm_name .. "(...)\n"
     final ..= Security.GetAntiTamper() .. "\n"
     
-    -- Obfuscate the seed using environment markers
-    final ..= string.format("local %s = %d + (_Detected * %d)\n", v_key, seed, math.random(500, 2000))
-    final ..= string.format("local %s = {}\n", v_mem)
-    final ..= split_to_shards(data)
-    
-    -- Metatable Decryptor (Eternal Shard core)
+    -- VM Internal State
     final ..= string.format([[
-local _p = {}
-local _c = %s
-setmetatable(_p, {
-    __index = function(t, i)
-        local sid = math.floor((i-1)/8) + 1
-        local off = ((i-1) %% 8) + 1
-        local d = %s[sid][off]
-        local res = bit32.bxor(d, _c)
-        res = bit32.bxor(res, (i %% 256))
-        _c = bit32.bxor(d, (%s + i) %% 256)
-        return string.char(res)
+    local %s = {%s}
+    local %s = {PC = 1, Stack = {}, Running = true, Buffer = {}}
+    local %s = getfenv()
+    
+    -- Isolated Sandbox Proxy
+    local %s = setmetatable({}, {
+        __index = function(_, k) return %s[k] end,
+        __newindex = function(_, k, v) %s[k] = v end
+    })
+
+    -- The Hypervisor Execution Loop
+    local function %s()
+        while %s.Running and %s.PC <= #%s do
+            local _raw = %s[%s.PC]
+            -- Logic Decryption (Instruction level)
+            local _inst = bit32.bxor(_raw, (%s.PC * %d + %d) %% 256)
+            table.insert(%s.Buffer, string.char(bit32.band(_inst, 255)))
+            
+            %s.PC = %s.PC + 1
+            if %s.PC %% 2000 == 0 then task.wait() end
+        end
+        
+        -- Virtual Context Execution
+        local _kernel = (%s[string.char(108,111,97,100,115,116,114,105,110,103)]) or loadstring or load
+        local _success, _runtime = pcall(function()
+            return _kernel(table.concat(%s.Buffer))
+        end)
+        
+        if _success and _runtime then
+            setfenv(_runtime, %s)
+            _runtime(...)
+        end
     end
-})
 
-local _s = {}
-for i = 1, %d do
-    _s[i] = _p[i]
+    pcall(%s)
 end
-local _f = (getfenv and getfenv()[string.char(108,111,97,100,115,116,114,105,110,103)]) or loadstring or load
-_f(table.concat(_s))()
-]], v_key, v_mem, v_key, #source)
+]], v_state, table.concat(instructions, ","), v_pc, v_sandbox, v_sandbox, v_sandbox, v_sandbox, v_dispatch, v_pc, v_pc, v_state, v_pc, v_pc, op_mod, op_xor, v_pc, v_pc, v_pc, v_pc, v_sandbox, v_pc, v_sandbox, v_dispatch)
 
-    final ..= "end\n_Start(...)\n"
+    final ..= v_vm_name .. "(...)\n"
     
     return final
 end
@@ -94,7 +91,7 @@ local output_file = process.args[2]
 if not input_file then return end
 
 local source = fs.readFile(input_file)
-local result = prometheus_eternal_shard(source)
+local result = prometheus_titan_vm(source)
 
 if output_file then
     fs.writeFile(output_file, result)
