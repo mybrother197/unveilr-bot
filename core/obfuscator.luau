@@ -1,7 +1,7 @@
 --!nocheck
 --[[
-    하하난천0 x 난독화 v19.2 "Transparent Titan"
-    Vararg Tunneling & Robust Syntax Assembly
+    하하난천0 x 난독화 v19.3 "Vivid Titan"
+    Kernel Resilience & Expanded Sandbox Compatibility
 ]]
 
 local fs = require("@lune/fs")
@@ -38,15 +38,17 @@ local function prometheus_titan_vm(source)
     local template = [[
 local function VAR_VM_NAME(...)
     local _ARGS = {...}
+    local _Env = getfenv()
     SECURITY_BLOCK
     
     local VAR_STATE = {BYTECODE_DATA}
     local VAR_PC_TABLE = {PC = 1, Running = true, Buffer = {}}
-    local VAR_PARENT_ENV = getfenv()
     
-    local VAR_SANDBOX = setmetatable({}, {
-        __index = function(_, k) return VAR_PARENT_ENV[k] end,
-        __newindex = function(_, k, v) VAR_PARENT_ENV[k] = v end
+    -- Fully Transparent Sandbox Proxy
+    local VAR_SANDBOX = setmetatable({ _G = _Env._G or _G }, {
+        __index = function(_, k) return _Env[k] end,
+        __newindex = function(_, k, v) _Env[k] = v end,
+        __metatable = "The environment is protected."
     })
 
     local function VAR_DISPATCH()
@@ -56,21 +58,30 @@ local function VAR_VM_NAME(...)
             table.insert(VAR_PC_TABLE.Buffer, string.char(bit32.band(_inst, 255)))
             
             VAR_PC_TABLE.PC = VAR_PC_TABLE.PC + 1
-            if VAR_PC_TABLE.PC % 3000 == 0 then task.wait() end
+            if VAR_PC_TABLE.PC % 5000 == 0 then 
+                local _w = (task and task.wait) or wait
+                if _w then _w() end
+            end
         end
         
-        local _kernel = (VAR_SANDBOX[string.char(108,111,97,100,115,116,114,105,110,103)]) or loadstring or load
+        -- Enhanced Kernel Detection
+        local _kernel = _Env[string.char(108,111,97,100,115,116,114,105,110,103)] or _Env.loadstring or _Env.load or loadstring or load
+        
+        if not _kernel then 
+            return -- Cannot execute without kernel
+        end
+
         local _success, _runtime = pcall(function()
             return _kernel(table.concat(VAR_PC_TABLE.Buffer))
         end)
         
         if _success and _runtime then
-            setfenv(_runtime, VAR_SANDBOX)
+            pcall(setfenv, _runtime, VAR_SANDBOX)
             _runtime(unpack(_ARGS))
         end
     end
 
-    pcall(VAR_DISPATCH)
+    VAR_DISPATCH() -- Execute directly for better reliability
 end
 VAR_VM_NAME(...)
 ]]
@@ -80,13 +91,11 @@ VAR_VM_NAME(...)
     final = final:gsub("VAR_STATE", v_state)
     final = final:gsub("BYTECODE_DATA", table.concat(instructions, ","))
     final = final:gsub("VAR_PC_TABLE", v_pc_table)
-    final = final:gsub("VAR_PARENT_ENV", generate_id(8))
     final = final:gsub("VAR_SANDBOX", v_sandbox)
-    final = final:gsub("VAR_DISPATCH", v_dispatch)
     final = final:gsub("OP_MOD", tostring(op_mod))
     final = final:gsub("OP_XOR", tostring(op_xor))
     
-    return "--[[ 하하난천0 x 난독화 v19.2 | Transparent Titan VM ]]\n" .. final
+    return "--[[ 하하난천0 x 난독화 v19.3 | Vivid Titan VM ]]\n" .. final
 end
 
 local input_file = process.args[1]
