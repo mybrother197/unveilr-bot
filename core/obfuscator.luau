@@ -1,7 +1,7 @@
 --!nocheck
 --[[
-    Prometheus X v12.3 "Phantom VM"
-    Ultimate Stability for Roblox Executors
+    Prometheus X v12.4 "Phantom VM"
+    Eliminated IIFE Syntax Ambiguity for Roblox
 ]]
 
 local fs = require("@lune/fs")
@@ -21,19 +21,17 @@ end
 
 local function prometheus_phantom_vm(source)
     -- 1. Rock-Solid Environment Verification
-    -- Using values that are 100% constant across ALL Roblox environments
     local key_derivation = [[
-local _0x_Key = 0
+local _0x_Key = 0;
 pcall(function()
-    _0x_Key = _0x_Key + #typeof(game)      -- 8 ("Instance")
-    _0x_Key = _0x_Key + #game.ClassName    -- 9 ("DataModel")
-    _0x_Key = _0x_Key + (type(spawn) == "function" and 10 or 5) -- Stable Check
-end)
+    _0x_Key = _0x_Key + #typeof(game);
+    _0x_Key = _0x_Key + #game.ClassName;
+    _0x_Key = _0x_Key + (type(spawn) == "function" and 10 or 5);
+end);
 ]]
 
     -- 2. Scramble logic
     local function encrypt(src)
-        -- 8 + 9 + 10 = 27 (Default for Roblox)
         local expected_key = 27
         local out = {}
         for i = 1, #src do
@@ -57,6 +55,7 @@ end)
     local v_chunks = generate_id(10)
     local v_res = generate_id(10)
     local v_fkey = generate_id(10)
+    local v_vm_func = generate_id(12, "VM_")
     
     local decoder_template = [[
 local V_CHUNKS = CHUNK_DATA;
@@ -89,13 +88,14 @@ if _f then _f() else error(_e or "Failed to load") end;
     decoder = safe_replace(decoder, "V_FKEY", v_fkey)
     decoder = safe_replace(decoder, "V_RES", v_res)
 
-    -- Final Product
-    local final = "--[[ Prometheus X Phantom v12.3 ]]\n"
-    final ..= "(function(...)\n"
+    -- Final Product (Using Named Function instead of IIFE)
+    local final = "--[[ Prometheus X Phantom v12.4 ]]\n"
+    final ..= "local " .. v_vm_func .. " = function(...)\n"
     final ..= "    local _Env = getfenv();\n"
     final ..= "    pcall(function() if _Env.P == 'getfenv()' then while true do end end end);\n"
     final ..= "    " .. (decoder:gsub("\n", " ")) .. "\n"
-    final ..= "end)(...)\n"
+    final ..= "end;\n"
+    final ..= "return " .. v_vm_func .. "(...)\n"
 
     return final
 end
