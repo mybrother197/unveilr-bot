@@ -1,7 +1,7 @@
 --!nocheck
 --[[
-    Prometheus X v12.0 "Phantom VM"
-    Advanced Environment-Keyed Logic with Dynamic Code Slicing
+    Prometheus X v12.1 "Phantom VM"
+    Safe code assembly to prevent syntax errors.
 ]]
 
 local fs = require("@lune/fs")
@@ -21,24 +21,19 @@ end
 
 local function prometheus_phantom_vm(source)
     -- 1. Multi-Stage Environment Verification
-    -- Key is DERIVED, not stored. If environment is even slightly off, decryption fails.
-    local key_derivation = [=[
+    local key_derivation = [[
 local _0x_Key = 0
 pcall(function()
-    -- 로블록스 환경 특성 결합 (분석기는 이 값들을 정확히 맞추기 힘듦)
-    _0x_Key = _0x_Key + #tostring(getfenv) -- 70-80 chars typically
-    _0x_Key = _0x_Key + #typeof(game)      -- 8 (Instance)
-    _0x_Key = _0x_Key + #tostring(game)    -- 4 (Game)
+    _0x_Key = _0x_Key + #tostring(getfenv)
+    _0x_Key = _0x_Key + #typeof(game)
+    _0x_Key = _0x_Key + #tostring(game)
     _0x_Key = _0x_Key + (not getmetatable(getfenv()) and 10 or 5)
 end)
-]=]
+]]
 
-    -- 2. Scramble logic with shared key
+    -- 2. Scramble logic
     local function encrypt(src)
-        -- We won't know the exact runtime key, so we use a calculated one based on standard Roblox
-        -- Standard Roblox getfenv tostring length is 20-30 in many environments, but let's use a simpler one.
-        -- We will provide a 'delta' to adjust it.
-        local expected_key = 50 -- Simulated base
+        local expected_key = 50 
         local out = {}
         for i = 1, #src do
             out[i] = bit32.bxor(src:byte(i), expected_key)
@@ -50,47 +45,52 @@ end)
     local hex_data = ""
     for _, b in ipairs(data) do hex_data ..= string.format("%02x", b) end
 
-    -- 3. Dynamic Code Slicer & Invisible Execution
-    -- We split the code into chunks to prevent single loadstring capture
+    -- 3. Dynamic Code Slicer
     local chunks = {}
-    local chunk_size = 4
+    local chunk_size = 8
     for i = 1, #hex_data, chunk_size do
         table.insert(chunks, hex_data:sub(i, i + chunk_size - 1))
     end
     local chunk_table = "{" .. '"' .. table.concat(chunks, '","') .. '"' .. "}"
 
-    -- Assembly
     local v_chunks = generate_id(10)
     local v_res = generate_id(10)
     local v_final_key = generate_id(10)
     
-    local decoder_logic = string.format([[
-local %s = %s
-%s
-local %s = _0x_Key
-local %s = {}
-for _, ch in ipairs(%s) do
+    local decoder_template = [[
+local V_CHUNKS = CHUNK_DATA
+KEY_DERIVATION
+local V_FKEY = _0x_Key
+local V_RES = {}
+for _, ch in ipairs(V_CHUNKS) do
     for i = 1, #ch, 2 do
         local b = tonumber(ch:sub(i, i+1), 16)
-        -- Adjusting for the delta between expected and actual runtime key
-        local real_byte = bit32.bxor(b, (%s - 50) + 50) 
-        table.insert(%s, string.char(real_byte))
+        local rb = bit32.bxor(b, (V_FKEY - 50) + 50) 
+        table.insert(V_RES, string.char(rb))
     end
 end
 local _run = getfenv()[string.char(108,111,97,100,115,116,114,105,110,103)] or loadstring or load
-_run(table.concat(%s))()
-]], v_chunks, chunk_table, key_derivation, v_final_key, v_res, v_chunks, v_final_key, v_res, v_res)
-
-    local final = string.format([[
---[[ Prometheus X Phantom v12.0 ]]
-(function(...)
-    local _Env = getfenv()
-    -- Anti-Analysis Trap
-    if _Env.P == "getfenv()" then while true do end end
+_run(table.concat(V_RES))()
+]]
     
-    %s
-end)(...)
-]], decoder_logic:gsub("\n", " "))
+    local function safe_replace(str, p, r)
+        return (str:gsub(p, function() return tostring(r) end))
+    end
+
+    local decoder = decoder_template
+    decoder = safe_replace(decoder, "V_CHUNKS", v_chunks)
+    decoder = safe_replace(decoder, "CHUNK_DATA", chunk_table)
+    decoder = safe_replace(decoder, "KEY_DERIVATION", key_derivation)
+    decoder = safe_replace(decoder, "V_FKEY", v_final_key)
+    decoder = safe_replace(decoder, "V_RES", v_res)
+
+    -- Final Product (Using simple concat for safety)
+    local final = "--[[ Prometheus X Phantom v12.1 ]]\n"
+    final ..= "(function(...)\n"
+    final ..= "    local _Env = getfenv();\n"
+    final ..= "    if _Env.P == 'getfenv()' then while true do end end;\n"
+    final ..= "    " .. (decoder:gsub("\n", " ")) .. "\n"
+    final ..= "end)(...)\n"
 
     return final
 end
@@ -101,7 +101,12 @@ local output_file = process.args[2]
 if not input_file then return end
 
 local source = fs.readFile(input_file)
-local result = prometheus_phantom_vm(source)
+local success, result = pcall(prometheus_phantom_vm, source)
+
+if not success then
+    print("Obfuscation error: " .. tostring(result))
+    process.exit(1)
+end
 
 if output_file then
     fs.writeFile(output_file, result)
