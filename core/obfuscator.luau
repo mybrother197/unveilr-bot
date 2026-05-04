@@ -1,7 +1,7 @@
 --!nocheck
 --[[
-    Prometheus X v12.2 "Phantom VM"
-    Robust Environment-Keyed Decryption for Roblox Executors
+    Prometheus X v12.3 "Phantom VM"
+    Ultimate Stability for Roblox Executors
 ]]
 
 local fs = require("@lune/fs")
@@ -20,21 +20,21 @@ local function generate_id(len)
 end
 
 local function prometheus_phantom_vm(source)
-    -- 1. Stable Environment Verification
+    -- 1. Rock-Solid Environment Verification
+    -- Using values that are 100% constant across ALL Roblox environments
     local key_derivation = [[
 local _0x_Key = 0
 pcall(function()
-    -- Always constant in Roblox
     _0x_Key = _0x_Key + #typeof(game)      -- 8 ("Instance")
     _0x_Key = _0x_Key + #game.ClassName    -- 9 ("DataModel")
-    _0x_Key = _0x_Key + (getfenv(0) == getfenv(1) and 5 or 10)
+    _0x_Key = _0x_Key + (type(spawn) == "function" and 10 or 5) -- Stable Check
 end)
 ]]
 
     -- 2. Scramble logic
     local function encrypt(src)
-        -- 8 + 9 + 5/10 = 22 or 27. We target 22 as default.
-        local expected_key = 22
+        -- 8 + 9 + 10 = 27 (Default for Roblox)
+        local expected_key = 27
         local out = {}
         for i = 1, #src do
             out[i] = bit32.bxor(src:byte(i), expected_key)
@@ -48,7 +48,7 @@ end)
 
     -- 3. Dynamic Code Slicer
     local chunks = {}
-    local chunk_size = 10
+    local chunk_size = 12
     for i = 1, #hex_data, chunk_size do
         table.insert(chunks, hex_data:sub(i, i + chunk_size - 1))
     end
@@ -59,23 +59,23 @@ end)
     local v_fkey = generate_id(10)
     
     local decoder_template = [[
-local V_CHUNKS = CHUNK_DATA
-KEY_DERIVATION
-local V_FKEY = _0x_Key
-local V_RES = {}
+local V_CHUNKS = CHUNK_DATA;
+KEY_DERIVATION;
+local V_FKEY = _0x_Key;
+local V_RES = {};
 for _, ch in ipairs(V_CHUNKS) do
     for i = 1, #ch, 2 do
-        local b = tonumber(ch:sub(i, i+1), 16)
+        local b = tonumber(ch:sub(i, i+1), 16);
         if b then
-            local rb = bit32.bxor(b, V_FKEY) 
-            table.insert(V_RES, string.char(rb))
+            local rb = bit32.bxor(b, V_FKEY);
+            table.insert(V_RES, string.char(rb));
         end
     end
-end
-local _src = table.concat(V_RES)
-local _run = (getfenv and getfenv()[string.char(108,111,97,100,115,116,114,105,110,103)]) or loadstring or load
-local _f, _e = _run(_src)
-if _f then _f() else error(_e or "Failed to load") end
+end;
+local _src = table.concat(V_RES);
+local _run = (getfenv and getfenv()[string.char(108,111,97,100,115,116,114,105,110,103)]) or loadstring or load;
+local _f, _e = _run(_src);
+if _f then _f() else error(_e or "Failed to load") end;
 ]]
     
     local function safe_replace(str, p, r)
@@ -90,10 +90,10 @@ if _f then _f() else error(_e or "Failed to load") end
     decoder = safe_replace(decoder, "V_RES", v_res)
 
     -- Final Product
-    local final = "--[[ Prometheus X Phantom v12.2 ]]\n"
+    local final = "--[[ Prometheus X Phantom v12.3 ]]\n"
     final ..= "(function(...)\n"
     final ..= "    local _Env = getfenv();\n"
-    final ..= "    if _Env.P == 'getfenv()' then while true do end end;\n"
+    final ..= "    pcall(function() if _Env.P == 'getfenv()' then while true do end end end);\n"
     final ..= "    " .. (decoder:gsub("\n", " ")) .. "\n"
     final ..= "end)(...)\n"
 
