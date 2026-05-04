@@ -1,7 +1,7 @@
 --!nocheck
 --[[
-    Prometheus X v12.1 "Phantom VM"
-    Safe code assembly to prevent syntax errors.
+    Prometheus X v12.2 "Phantom VM"
+    Robust Environment-Keyed Decryption for Roblox Executors
 ]]
 
 local fs = require("@lune/fs")
@@ -20,20 +20,21 @@ local function generate_id(len)
 end
 
 local function prometheus_phantom_vm(source)
-    -- 1. Multi-Stage Environment Verification
+    -- 1. Stable Environment Verification
     local key_derivation = [[
 local _0x_Key = 0
 pcall(function()
-    _0x_Key = _0x_Key + #tostring(getfenv)
-    _0x_Key = _0x_Key + #typeof(game)
-    _0x_Key = _0x_Key + #tostring(game)
-    _0x_Key = _0x_Key + (not getmetatable(getfenv()) and 10 or 5)
+    -- Always constant in Roblox
+    _0x_Key = _0x_Key + #typeof(game)      -- 8 ("Instance")
+    _0x_Key = _0x_Key + #game.ClassName    -- 9 ("DataModel")
+    _0x_Key = _0x_Key + (getfenv(0) == getfenv(1) and 5 or 10)
 end)
 ]]
 
     -- 2. Scramble logic
     local function encrypt(src)
-        local expected_key = 50 
+        -- 8 + 9 + 5/10 = 22 or 27. We target 22 as default.
+        local expected_key = 22
         local out = {}
         for i = 1, #src do
             out[i] = bit32.bxor(src:byte(i), expected_key)
@@ -47,7 +48,7 @@ end)
 
     -- 3. Dynamic Code Slicer
     local chunks = {}
-    local chunk_size = 8
+    local chunk_size = 10
     for i = 1, #hex_data, chunk_size do
         table.insert(chunks, hex_data:sub(i, i + chunk_size - 1))
     end
@@ -55,7 +56,7 @@ end)
 
     local v_chunks = generate_id(10)
     local v_res = generate_id(10)
-    local v_final_key = generate_id(10)
+    local v_fkey = generate_id(10)
     
     local decoder_template = [[
 local V_CHUNKS = CHUNK_DATA
@@ -65,12 +66,16 @@ local V_RES = {}
 for _, ch in ipairs(V_CHUNKS) do
     for i = 1, #ch, 2 do
         local b = tonumber(ch:sub(i, i+1), 16)
-        local rb = bit32.bxor(b, (V_FKEY - 50) + 50) 
-        table.insert(V_RES, string.char(rb))
+        if b then
+            local rb = bit32.bxor(b, V_FKEY) 
+            table.insert(V_RES, string.char(rb))
+        end
     end
 end
-local _run = getfenv()[string.char(108,111,97,100,115,116,114,105,110,103)] or loadstring or load
-_run(table.concat(V_RES))()
+local _src = table.concat(V_RES)
+local _run = (getfenv and getfenv()[string.char(108,111,97,100,115,116,114,105,110,103)]) or loadstring or load
+local _f, _e = _run(_src)
+if _f then _f() else error(_e or "Failed to load") end
 ]]
     
     local function safe_replace(str, p, r)
@@ -81,11 +86,11 @@ _run(table.concat(V_RES))()
     decoder = safe_replace(decoder, "V_CHUNKS", v_chunks)
     decoder = safe_replace(decoder, "CHUNK_DATA", chunk_table)
     decoder = safe_replace(decoder, "KEY_DERIVATION", key_derivation)
-    decoder = safe_replace(decoder, "V_FKEY", v_final_key)
+    decoder = safe_replace(decoder, "V_FKEY", v_fkey)
     decoder = safe_replace(decoder, "V_RES", v_res)
 
-    -- Final Product (Using simple concat for safety)
-    local final = "--[[ Prometheus X Phantom v12.1 ]]\n"
+    -- Final Product
+    local final = "--[[ Prometheus X Phantom v12.2 ]]\n"
     final ..= "(function(...)\n"
     final ..= "    local _Env = getfenv();\n"
     final ..= "    if _Env.P == 'getfenv()' then while true do end end;\n"
