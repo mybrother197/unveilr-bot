@@ -701,7 +701,7 @@ function SemanticCompiler:compileStatement(stmt: any)
 			end
 		end
 	elseif tag == "Call" or tag == "MethodCall" then
-		self:compileCall(stmt, self.regCount)
+		self:compileCall(stmt, self.regCount, "stat")
 	elseif tag == "If" then
 		self:compileIf(stmt)
 	elseif tag == "While" then
@@ -811,7 +811,7 @@ function SemanticCompiler:compileExpression(expr: any, targetReg: number)
 	end
 end
 
-function SemanticCompiler:compileCall(stmt: any, targetReg: number)
+function SemanticCompiler:compileCall(stmt: any, targetReg: number, meta: any?)
 	local funcReg = targetReg
 	if stmt.tag == "MethodCall" then
 		self:compileExpression(stmt.object, funcReg)
@@ -827,7 +827,7 @@ function SemanticCompiler:compileCall(stmt: any, targetReg: number)
 			self.regCount = startArgs + i
 			self:compileExpression(arg, self.regCount)
 		end
-		self:emit("FUNC_CALL", funcReg, #stmt.args + 1, 1)
+		self:emit("FUNC_CALL", funcReg, #stmt.args + 1, meta == "stat" and 0 or 1)
 		self.regCount = oldRegCount
 	else
 		self:compileExpression(stmt.func, funcReg)
@@ -838,15 +838,16 @@ function SemanticCompiler:compileCall(stmt: any, targetReg: number)
 			self:compileExpression(arg, self.regCount)
 		end
 		self.regCount = oldReg
-		self:emit("FUNC_CALL", funcReg, #stmt.args, 1)
+		self:emit("FUNC_CALL", funcReg, #stmt.args, meta == "stat" and 0 or 1)
 	end
 end
 
 function SemanticCompiler:compileIf(stmt: any)
 	local jumpPoints = {}
+	local oldRegCount = self.regCount
 	
 	-- Compile IF
-	local condReg = self.regCount
+	local condReg = self.regCount; self.regCount += 1
 	self:compileExpression(stmt.cond, condReg)
 	local jumpIdx = #self.ir + 1
 	self:emit("ROUTE_IFNOT", condReg, 0)
@@ -887,11 +888,14 @@ function SemanticCompiler:compileIf(stmt: any)
 	for _, idx in ipairs(jumpPoints) do
 		self.ir[idx].a = endPos
 	end
+	
+	self.regCount = oldRegCount
 end
 
 function SemanticCompiler:compileWhile(stmt: any)
+	local oldRegCount = self.regCount
 	local startPos = #self.ir
-	local condReg = self.regCount
+	local condReg = self.regCount; self.regCount += 1
 	self:compileExpression(stmt.cond, condReg)
 	local jumpIdx = #self.ir + 1
 	self:emit("ROUTE_IFNOT", condReg, 0)
@@ -899,15 +903,18 @@ function SemanticCompiler:compileWhile(stmt: any)
 	self:compileBlock(stmt.body)
 	self:emit("ROUTE_GOTO", startPos)
 	self.ir[jumpIdx].b = #self.ir
+	self.regCount = oldRegCount
 end
 
 function SemanticCompiler:compileRepeat(stmt: any)
+	local oldRegCount = self.regCount
 	local startPos = #self.ir
 	self:compileBlock(stmt.body)
 	
-	local condReg = self.regCount
+	local condReg = self.regCount; self.regCount += 1
 	self:compileExpression(stmt.cond, condReg)
 	self:emit("ROUTE_IFNOT", condReg, startPos)
+	self.regCount = oldRegCount
 end
 
 function SemanticCompiler:compileNumericFor(stmt: any)
@@ -1240,7 +1247,7 @@ _EXEC_VM(main_bc, main_seed, {}, _ENV)
 		elseif name == "FUNC_CALL" then add_h(val, [[
 			local func = regs[a]
 			local args = {}
-			for i=1, b do args[i] = regs[a + i] end
+			for i=1, b do args[i] = regs[a + i] or nil end
 			local results = { func(table.unpack(args)) }
 			for i=1, c do regs[a + i - 1] = results[i] end
 		]])
