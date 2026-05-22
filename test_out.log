@@ -1,0 +1,2 @@
+bad argument #1 to `loadstring`: error converting Lua string to String (invalid utf-8 sequence of 1 bytes from index 0)
+

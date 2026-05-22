@@ -1,0 +1,107 @@
+[+] Lexing...
+[+] Parsing...
+[+] Compiling to Alien IR...
+[IR] 0: DATA_K 0 0 nil
+[IR] 1: DATA_K 1 1 nil
+[IR] 2: DATA_SLOT 2 0 nil
+[IR] 3: DATA_SLOT 3 1 nil
+[IR] 4: CALC_ADD 2 2 3
+[IR] 5: ENV_GET 3 2 nil
+[IR] 6: DATA_K 4 3 nil
+[IR] 7: DATA_SLOT 5 2 nil
+[IR] 8: FUNC_CALL 3 2 1
+--- COMPILING SUB-FUNCTION ---
+[IR] 0: DATA_SLOT 1 0 nil
+[IR] 1: DATA_K 2 4 nil
+[IR] 2: GATE_GT 1 1 2
+[IR] 3: ROUTE_IFNOT 1 0 nil
+[IR] 4: ENV_GET 1 2 nil
+[IR] 5: DATA_SLOT 2 0 nil
+[IR] 6: DATA_K 3 5 nil
+[IR] 7: FUNC_CALL 1 2 1
+[IR] 8: ROUTE_GOTO 0 nil nil
+[IR] 9: ENV_GET 1 2 nil
+[IR] 10: DATA_SLOT 2 0 nil
+[IR] 11: DATA_K 3 6 nil
+[IR] 12: FUNC_CALL 1 2 1
+[IR] 13: FUNC_RET 0 0 nil
+[Emit] 0: DATA_SLOT (137) 1 0 0
+[Emit] 1: DATA_K (88) 2 4 0
+[Emit] 2: GATE_GT (128) 1 1 2
+[Emit] 3: ROUTE_IFNOT (142) 1 9 0
+[Emit] 4: ENV_GET (154) 1 2 0
+[Emit] 5: DATA_SLOT (137) 2 0 0
+[Emit] 6: DATA_K (88) 3 5 0
+[Emit] 7: FUNC_CALL (210) 1 2 1
+[Emit] 8: ROUTE_GOTO (69) 13 0 0
+[Emit] 9: ENV_GET (154) 1 2 0
+[Emit] 10: DATA_SLOT (137) 2 0 0
+[Emit] 11: DATA_K (88) 3 6 0
+[Emit] 12: FUNC_CALL (210) 1 2 1
+[Emit] 13: FUNC_RET (30) 0 0 0
+[IR] 9: FUNC_CLOSURE 3 7 1779492719
+[IR] 10: DATA_SLOT 4 3 nil
+[IR] 11: DATA_SLOT 5 2 nil
+[IR] 12: FUNC_CALL 4 1 1
+[IR] 13: DATA_SLOT 4 3 nil
+[IR] 14: DATA_SLOT 5 0 nil
+[IR] 15: FUNC_CALL 4 1 1
+[IR] 16: TABLE_NEW 4 3 nil
+[IR] 17: DATA_K 5 8 nil
+[IR] 18: DATA_K 6 8 nil
+[IR] 19: TABLE_SET 4 6 5
+[IR] 20: DATA_K 5 9 nil
+[IR] 21: DATA_K 6 9 nil
+[IR] 22: TABLE_SET 4 6 5
+[IR] 23: DATA_K 5 10 nil
+[IR] 24: DATA_K 6 10 nil
+[IR] 25: TABLE_SET 4 6 5
+[IR] 26: ENV_GET 5 2 nil
+[IR] 27: DATA_K 6 11 nil
+[IR] 28: DATA_SLOT 7 4 nil
+[IR] 29: DATA_K 8 8 nil
+[IR] 30: TABLE_GET 7 7 8
+[IR] 31: FUNC_CALL 5 2 1
+[IR] 32: ENV_GET 5 2 nil
+[IR] 33: DATA_K 6 12 nil
+[IR] 34: FUNC_CALL 5 1 1
+[IR] 35: FUNC_RET 0 0 nil
+[+] Emitting Bytecode...
+[Emit] 0: DATA_K (88) 0 0 0
+[Emit] 1: DATA_K (88) 1 1 0
+[Emit] 2: DATA_SLOT (137) 2 0 0
+[Emit] 3: DATA_SLOT (137) 3 1 0
+[Emit] 4: CALC_ADD (133) 2 2 3
+[Emit] 5: ENV_GET (154) 3 2 0
+[Emit] 6: DATA_K (88) 4 3 0
+[Emit] 7: DATA_SLOT (137) 5 2 0
+[Emit] 8: FUNC_CALL (210) 3 2 1
+[Emit] 9: FUNC_CLOSURE (79) 3 7 1779492719
+[Emit] 10: DATA_SLOT (137) 4 3 0
+[Emit] 11: DATA_SLOT (137) 5 2 0
+[Emit] 12: FUNC_CALL (210) 4 1 1
+[Emit] 13: DATA_SLOT (137) 4 3 0
+[Emit] 14: DATA_SLOT (137) 5 0 0
+[Emit] 15: FUNC_CALL (210) 4 1 1
+[Emit] 16: TABLE_NEW (35) 4 3 0
+[Emit] 17: DATA_K (88) 5 8 0
+[Emit] 18: DATA_K (88) 6 8 0
+[Emit] 19: TABLE_SET (8) 4 6 5
+[Emit] 20: DATA_K (88) 5 9 0
+[Emit] 21: DATA_K (88) 6 9 0
+[Emit] 22: TABLE_SET (8) 4 6 5
+[Emit] 23: DATA_K (88) 5 10 0
+[Emit] 24: DATA_K (88) 6 10 0
+[Emit] 25: TABLE_SET (8) 4 6 5
+[Emit] 26: ENV_GET (154) 5 2 0
+[Emit] 27: DATA_K (88) 6 11 0
+[Emit] 28: DATA_SLOT (137) 7 4 0
+[Emit] 29: DATA_K (88) 8 8 0
+[Emit] 30: TABLE_GET (171) 7 7 8
+[Emit] 31: FUNC_CALL (210) 5 2 1
+[Emit] 32: ENV_GET (154) 5 2 0
+[Emit] 33: DATA_K (88) 6 12 0
+[Emit] 34: FUNC_CALL (210) 5 1 1
+[Emit] 35: FUNC_RET (30) 0 0 0
+[+] Generating VM Runtime...
+[*] Build Successful! -> test_phantom_out.lua
