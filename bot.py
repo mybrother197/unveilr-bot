@@ -126,7 +126,7 @@ async def obfuscate(interaction: discord.Interaction, file: Optional[discord.Att
     request_id = interaction.id
     input_path = TEMP_DIR / f"obf_in_{request_id}.lua"
     output_path = TEMP_DIR / f"obf_out_{request_id}.lua"
-    obf_logic_path = Path(__file__).resolve().parent / "core" / "phantom_compiler.luau"
+    obf_logic_path = Path(__file__).resolve().parent / "core" / "obfuscator.luau"
 
     try:
         success = await get_content(file, code, input_path)
