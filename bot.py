@@ -15,6 +15,7 @@ load_dotenv(dotenv_path=env_path)
 
 TOKEN = os.getenv('DISCORD_TOKEN')
 UNVEILR_PATH = Path(__file__).resolve().parent / "core" / "hi.luau"
+LAUFUSCATOR_PATH = Path(__file__).resolve().parent / "core" / "laufuscator.lua"
 TEMP_DIR = Path(__file__).resolve().parent / "temp"
 TEMP_DIR.mkdir(exist_ok=True)
 
@@ -115,8 +116,16 @@ async def unveil(interaction: discord.Interaction, file: Optional[discord.Attach
         if input_path.exists(): input_path.unlink()
         if output_path.exists(): output_path.unlink()
 
-@client.tree.command(name="obfuscate", description="루아 코드를 난독화합니다.")
-@app_commands.describe(file="난독화할 파일", code="난독화할 코드 직접 입력")
+def get_lua54_cmd():
+    """lua54.exe 경로 탐색: 봇 폴더 우선, 없으면 PATH에서 검색"""
+    local_lua = Path(__file__).resolve().parent / ('lua54.exe' if os.name == 'nt' else 'lua54')
+    if local_lua.exists():
+        return str(local_lua)
+    found = shutil.which('lua54') or shutil.which('lua5.4') or shutil.which('lua')
+    return found or 'lua54'
+
+@client.tree.command(name="obfuscate", description="루아 코드를 Laufuscator로 난독화합니다.")
+@app_commands.describe(file="난독화할 .lua 파일", code="난독화할 코드 직접 입력")
 async def obfuscate(interaction: discord.Interaction, file: Optional[discord.Attachment] = None, code: Optional[str] = None):
     if not any([file, code]):
         await interaction.response.send_message("파일 또는 코드를 제공해주세요!", ephemeral=True)
@@ -124,9 +133,8 @@ async def obfuscate(interaction: discord.Interaction, file: Optional[discord.Att
 
     await interaction.response.defer(thinking=True)
     request_id = interaction.id
-    input_path = TEMP_DIR / f"obf_in_{request_id}.lua"
+    input_path  = TEMP_DIR / f"obf_in_{request_id}.lua"
     output_path = TEMP_DIR / f"obf_out_{request_id}.lua"
-    obf_logic_path = Path(__file__).resolve().parent / "core" / "obfuscator.luau"
 
     try:
         success = await get_content(file, code, input_path)
@@ -134,34 +142,46 @@ async def obfuscate(interaction: discord.Interaction, file: Optional[discord.Att
             await interaction.followup.send(f"입력값 처리 실패: {success}")
             return
 
-        # Reuse run_lune but with different paths
-        lune_cmd = shutil.which('lune')
-        if not lune_cmd:
-            local_lune = Path(__file__).resolve().parent / ('lune.exe' if os.name == 'nt' else 'lune')
-            lune_cmd = str(local_lune) if local_lune.exists() else 'lune'
-
+        lua_cmd = get_lua54_cmd()
+        # --quiet 플래그로 배너 출력 억제
         process = await asyncio.create_subprocess_exec(
-            lune_cmd, 'run', str(obf_logic_path), str(input_path), str(output_path),
+            lua_cmd,
+            str(LAUFUSCATOR_PATH),
+            str(input_path),
+            str(output_path),
+            '--quiet',
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
         )
-        
+
         try:
-            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=30.0)
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=60.0)
             ret_code = process.returncode
         except asyncio.TimeoutError:
             process.kill()
-            ret_code, stdout, stderr = -1, b"", b"Obfuscation timed out!"
+            ret_code, stdout, stderr = -1, b"", b"Obfuscation timed out! (60s)"
 
-        if ret_code == 0 and output_path.exists():
+        if ret_code == 0 and output_path.exists() and output_path.stat().st_size > 0:
+            orig_size  = input_path.stat().st_size if input_path.exists() else 0
+            obf_size   = output_path.stat().st_size
+            ratio      = obf_size / orig_size if orig_size else 0
+            summary    = (
+                f"✅ **Laufuscator 난독화 완료!**\n"
+                f"> 원본: `{orig_size:,}` bytes → 난독화: `{obf_size:,}` bytes (x{ratio:.1f})"
+            )
             file_lua = discord.File(output_path, filename="obfuscated.lua")
-            await interaction.followup.send("난독화 완료!", file=file_lua)
+            await interaction.followup.send(summary, file=file_lua)
         else:
             err_msg = stderr.decode('utf-8', errors='ignore').strip()
-            await interaction.followup.send(f"난독화 실패.\n코드: {ret_code}\n에러: {err_msg}")
+            out_msg = stdout.decode('utf-8', errors='ignore').strip()
+            combined = f"❌ **난독화 실패** (코드: {ret_code})\n"
+            if err_msg: combined += f"```\n{err_msg[-800:]}\n```"
+            if out_msg: combined += f"```\n{out_msg[-400:]}\n```"
+            if not err_msg and not out_msg: combined += "원인 불명 (출력 없음)"
+            await interaction.followup.send(combined)
     finally:
-        if input_path.exists(): input_path.unlink()
-        if output_path.exists(): output_path.unlink()
+        if input_path.exists():  input_path.unlink(missing_ok=True)
+        if output_path.exists(): output_path.unlink(missing_ok=True)
 
 if __name__ == "__main__":
     if not TOKEN:
